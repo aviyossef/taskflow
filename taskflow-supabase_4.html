@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1c1c2e;--ink2:#52526e;--ink3:#9898b8;
+  --line:#e6e6f0;--line2:#f4f4fa;--bg:#f7f7fc;--surface:#fff;
+  --blue:#3b5bdb;--blue-lt:#eef1ff;--blue-md:#bac8ff;
+  --green:#2f9e44;--amber:#e67700;--red:#c92a2a;--purple:#7c3aed;
+  --r:10px;--sidebar:230px;
+}
+body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;display:flex;direction:rtl;font-size:14px;-webkit-font-smoothing:antialiased}
+
+/* ── SETUP SCREEN ── */
+#setupScreen{
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  z-index:1000;
+}
+.setup-card{
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  padding:40px 44px;width:500px;max-width:95vw;
+  box-shadow:0 8px 40px rgba(0,0,0,0.08);
+}
+.setup-logo{display:flex;align-items:center;gap:10px;margin-bottom:28px}
+.setup-mark{width:36px;height:36px;background:var(--ink);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff}
+.setup-title{font-size:22px;font-weight:800;letter-spacing:-0.5px}
+.setup-sub{font-size:13px;color:var(--ink3);margin-bottom:28px;line-height:1.6}
+.setup-step{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--blue-lt);color:var(--blue);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-text{font-size:12.5px;color:var(--ink2);line-height:1.5}
+.step-text a{color:var(--blue);text-decoration:none;font-weight:600}
+.step-text a:hover{text-decoration:underline}
+.setup-divider{border:none;border-top:1px solid var(--line);margin:20px 0}
+.setup-field{margin-bottom:14px}
+.setup-field label{display:block;font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.setup-field input{width:100%;background:var(--line2);border:1px solid var(--line);border-radius:8px;padding:10px 13px;font-family:inherit;font-size:13.5px;color:var(--ink);outline:none;transition:border-color .2s}
+.setup-field input:focus{border-color:var(--blue-md);background:var(--surface)}
+.setup-field input::placeholder{color:var(--ink3)}
+.btn-connect{width:100%;background:var(--ink);color:#fff;border:none;border-radius:8px;padding:12px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .15s;margin-top:6px}
+.btn-connect:hover{opacity:.85}
+.setup-err{color:var(--red);font-size:12px;margin-top:8px;display:none}
+.demo-link{text-align:center;margin-top:14px;font-size:12px;color:var(--ink3)}
+.demo-link a{color:var(--blue);cursor:pointer;font-weight:600}
+.demo-link a:hover{text-decoration:underline}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sidebar);background:var(--surface);border-left:1px solid var(--line);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh}
+.logo{display:flex;align-items:center;gap:10px;padding:20px 18px 18px;border-bottom:1px solid var(--line)}
+.logo-mark{width:30px;height:30px;background:var(--ink);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff}
+.logo-name{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.conn-dot{width:7px;height:7px;border-radius:50%;margin-right:auto;flex-shrink:0}
+.conn-dot.online{background:var(--green)}
+.conn-dot.offline{background:var(--ink3)}
+
+.nav{padding:14px 10px;flex:1;overflow-y:auto}
+.nav-label{font-size:10px;font-weight:700;color:var(--ink3);letter-spacing:1px;text-transform:uppercase;padding:10px 8px 5px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:500;color:var(--ink2);transition:background .12s,color .12s;user-select:none;position:relative}
+.nav-item:hover{background:var(--line2);color:var(--ink)}
+.nav-item.active{background:var(--blue-lt);color:var(--blue);font-weight:600}
+.nav-ic{font-size:15px;width:18px;text-align:center;flex-shrink:0}
+.nav-badge{margin-right:auto;font-size:10px;font-weight:700;color:var(--ink3);background:var(--line2);padding:1px 6px;border-radius:20px}
+.nav-item.active .nav-badge{background:var(--blue-md);color:var(--blue)}
+
+.proj-list{padding:0 10px 14px}
+.proj-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;cursor:pointer;color:var(--ink2);font-size:13px;transition:background .12s;position:relative}
+.proj-row:hover{background:var(--line2);color:var(--ink)}
+.proj-row.active{background:var(--blue-lt);color:var(--blue);font-weight:600}
+.proj-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.proj-actions{display:none;gap:3px;margin-right:auto}
+.proj-row:hover .proj-actions{display:flex}
+.proj-act-btn{width:20px;height:20px;border-radius:4px;border:none;background:var(--line);color:var(--ink2);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center}
+.proj-act-btn:hover{background:var(--line2);color:var(--red)}
+
+.sidebar-footer{padding:14px 18px;border-top:1px solid var(--line)}
+.user-row{display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px;border-radius:8px;transition:background .12s;margin:-8px}
+.user-row:hover{background:var(--line2)}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--ink);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.user-name{font-size:13px;font-weight:600}
+.user-role{font-size:11px;color:var(--ink3)}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+
+.topbar{background:var(--surface);border-bottom:1px solid var(--line);padding:16px 28px;display:flex;align-items:center;gap:14px;flex-shrink:0}
+.topbar-title{font-size:19px;font-weight:800;letter-spacing:-.4px;flex:1}
+.topbar-sub{font-size:12px;color:var(--ink3);margin-top:2px}
+
+.search{display:flex;align-items:center;gap:8px;background:var(--line2);border:1px solid var(--line);border-radius:8px;padding:7px 12px;width:200px;transition:all .2s}
+.search:focus-within{background:var(--surface);border-color:var(--blue-md);width:240px}
+.search input{background:none;border:none;outline:none;font-family:inherit;font-size:13px;color:var(--ink);width:100%}
+.search input::placeholder{color:var(--ink3)}
+
+.btn{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--ink);color:#fff}
+.btn-primary:hover{opacity:.85;transform:translateY(-1px)}
+.btn-ghost{background:var(--line2);color:var(--ink2);border:1px solid var(--line)}
+.btn-ghost:hover{background:var(--line);color:var(--ink)}
+.btn-danger{background:#fff0f0;color:var(--red);border:1px solid #ffd0d0}
+.btn-danger:hover{background:#ffe0e0}
+.btn-sm{padding:5px 10px;font-size:12px}
+
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--line);padding:0 28px;flex-shrink:0}
+.tab{padding:11px 14px;font-size:13px;font-weight:500;color:var(--ink3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--ink2)}
+.tab.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
+
+/* ── VIEWS ── */
+.view{flex:1;overflow-y:auto;display:none}
+.view.active{display:flex;flex-direction:column}
+.view::-webkit-scrollbar{width:4px}
+.view::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+
+/* ── CONTENT PADDING ── */
+.pad{padding:24px 28px}
+
+/* ── STATS ── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;transition:box-shadow .2s}
+.stat:hover{box-shadow:0 4px 20px rgba(0,0,0,0.06)}
+.stat-label{font-size:10.5px;color:var(--ink3);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.stat-val{font-size:30px;font-weight:800;letter-spacing:-1.5px;line-height:1;margin:7px 0 4px}
+.stat-note{font-size:11.5px;color:var(--ink3)}
+
+/* ── PANEL ── */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.panel-head{display:flex;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.panel-title{font-size:13.5px;font-weight:700;flex:1}
+
+/* ── TASK LIST ── */
+.task-group{}
+.grp-head{display:flex;align-items:center;gap:8px;padding:9px 18px;background:var(--line2);cursor:pointer;font-size:12px;font-weight:700;color:var(--ink2);border-bottom:1px solid var(--line);user-select:none}
+.grp-pip{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.grp-count{font-weight:400;color:var(--ink3)}
+.grp-arrow{margin-right:auto;font-size:11px;color:var(--ink3);transition:transform .2s}
+.grp-arrow.open{transform:rotate(90deg)}
+
+.task-row{display:flex;align-items:center;gap:11px;padding:10px 18px;border-bottom:1px solid var(--line);transition:background .1s;cursor:pointer}
+.task-row:last-child{border-bottom:none}
+.task-row:hover{background:var(--line2)}
+.task-row.done-row .task-name{text-decoration:line-through;color:var(--ink3)}
+
+.check{width:17px;height:17px;border:1.5px solid var(--line);border-radius:5px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;background:var(--surface)}
+.check:hover{border-color:var(--green)}
+.check.checked{background:var(--green);border-color:var(--green)}
+.check.checked::after{content:'✓';color:#fff;font-size:10px;font-weight:800}
+
+.task-name{flex:1;font-size:13.5px;font-weight:500;color:var(--ink)}
+.task-meta{display:flex;align-items:center;gap:7px;flex-shrink:0}
+
+.badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.b-red{background:#fff0f0;color:var(--red)}
+.b-amber{background:#fff8e1;color:var(--amber)}
+.b-green{background:#ebfbee;color:var(--green)}
+.b-blue{background:var(--blue-lt);color:var(--blue)}
+.b-gray{background:var(--line2);color:var(--ink3)}
+
+.due-date{font-size:11.5px;color:var(--ink3);white-space:nowrap}
+.due-date.late{color:var(--red);font-weight:600}
+
+.av{width:24px;height:24px;border-radius:50%;font-size:10px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+.task-actions{display:none;gap:4px}
+.task-row:hover .task-actions{display:flex}
+.icon-btn{width:24px;height:24px;border-radius:5px;border:none;background:var(--line2);color:var(--ink2);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all .12s}
+.icon-btn:hover{background:var(--line);color:var(--red)}
+.icon-btn.edit:hover{color:var(--blue)}
+
+.add-row{display:flex;align-items:center;gap:8px;padding:10px 18px;color:var(--ink3);font-size:13px;cursor:pointer;border-top:1px solid var(--line);transition:all .12s}
+.add-row:hover{background:var(--line2);color:var(--blue)}
+
+/* ── KANBAN ── */
+.kanban-wrap{display:flex;gap:14px;padding:24px 28px;overflow-x:auto;align-items:flex-start;flex:1}
+.k-col{width:260px;flex-shrink:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.k-head{display:flex;align-items:center;gap:7px;padding:12px 14px;border-bottom:1px solid var(--line);font-size:12.5px;font-weight:700}
+.k-pip{width:6px;height:6px;border-radius:50%}
+.k-cnt{margin-right:auto;font-size:11px;color:var(--ink3);font-weight:500}
+.k-cards{padding:10px;display:flex;flex-direction:column;gap:7px;min-height:60px}
+.k-card{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 13px;cursor:grab;transition:box-shadow .15s,transform .15s}
+.k-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08);transform:translateY(-1px)}
+.k-card.dragging{opacity:.4;cursor:grabbing}
+.k-cards.drag-over{outline:2px dashed var(--blue-md);outline-offset:-4px;background:var(--blue-lt)}
+.k-card-title{font-size:13px;font-weight:600;margin-bottom:9px;line-height:1.4}
+.k-card-foot{display:flex;align-items:center;gap:6px}
+.k-add{display:flex;align-items:center;gap:6px;padding:10px 14px;color:var(--ink3);font-size:12.5px;cursor:pointer;border-top:1px solid var(--line);transition:all .12s}
+.k-add:hover{background:var(--line2);color:var(--blue)}
+
+/* ── SETTINGS VIEW ── */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.settings-section{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.settings-section.full{grid-column:1/-1}
+.settings-head{padding:14px 18px;border-bottom:1px solid var(--line);font-size:13.5px;font-weight:700}
+.settings-body{padding:18px}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line2)}
+.settings-row:last-child{border-bottom:none}
+.settings-row-label{font-size:13px;font-weight:500}
+.settings-row-sub{font-size:11.5px;color:var(--ink3);margin-top:2px}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(28,28,46,.4);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:500}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--line);border-radius:14px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:28px 30px;animation:modalUp .2s ease;box-shadow:0 20px 60px rgba(0,0,0,.12)}
+.modal-wide{width:620px}
+@keyframes modalUp{from{opacity:0;transform:translateY(14px)}}
+.modal-title{font-size:17px;font-weight:800;margin-bottom:20px;letter-spacing:-.4px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.field input,.field textarea,.field select{width:100%;background:var(--line2);border:1px solid var(--line);border-radius:8px;padding:9px 13px;font-family:inherit;font-size:13.5px;color:var(--ink);outline:none;transition:border-color .2s,background .2s}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--blue-md);background:var(--surface)}
+.field textarea{min-height:72px;resize:vertical}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-foot{display:flex;gap:8px;margin-top:22px}
+.color-picker{display:flex;gap:8px;flex-wrap:wrap}
+.color-swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .12s}
+.color-swatch:hover{transform:scale(1.15)}
+.color-swatch.sel{border-color:var(--ink);transform:scale(1.1)}
+
+/* ── FILE UPLOAD ── */
+.file-drop{border:2px dashed var(--line);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;color:var(--ink3);font-size:13px}
+.file-drop:hover,.file-drop.drag-on{border-color:var(--blue-md);background:var(--blue-lt);color:var(--blue)}
+.file-drop input{display:none}
+.file-list{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.file-item{display:flex;align-items:center;gap:8px;background:var(--line2);border-radius:7px;padding:7px 10px;font-size:12.5px}
+.file-icon{font-size:16px}
+.file-name{flex:1;color:var(--ink);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-size{color:var(--ink3);font-size:11px}
+.file-remove{background:none;border:none;color:var(--ink3);cursor:pointer;font-size:14px;padding:0 2px;transition:color .12s}
+.file-remove:hover{color:var(--red)}
+
+/* ── TOAST ── */
+.toast-wrap{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:999;pointer-events:none}
+.toast{background:var(--ink);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500;animation:toastIn .25s ease;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.2)}
+.toast.success{background:var(--green)}
+.toast.error{background:var(--red)}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:48px 24px;color:var(--ink3)}
+.empty-icon{font-size:40px;margin-bottom:12px}
+.empty-text{font-size:14px;font-weight:500;margin-bottom:16px}
+
+/* ── LOADING ── */
+.spinner{width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* scrollbar */
+*{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+</style>
+</head>
+<body>
+
+<!-- ═══ SETUP SCREEN ═══ -->
+<div id="setupScreen">
+  <div class="setup-card">
+    <div class="setup-logo">
+      <div class="setup-mark">TF</div>
+      <span style="font-size:20px;font-weight:800;letter-spacing:-.4px">TaskFlow</span>
+    </div>
+    <p class="setup-sub">חבר את Supabase כדי להתחיל לשמור נתונים אמיתיים.<br>התהליך לוקח פחות מ-5 דקות ולא דורש ידע טכני.</p>
+
+    <div class="setup-step"><div class="step-num">1</div><div class="step-text">היכנס ל-<a href="https://supabase.com" target="_blank">supabase.com</a> → צור חשבון חינמי → צור פרויקט חדש (בחר שם, סיסמה, אזור: Europe)</div></div>
+    <div class="setup-step"><div class="step-num">2</div><div class="step-text">לאחר שהפרויקט נטען, לך ל-<strong>SQL Editor</strong> בתפריט הצד, הדבק ולחץ Run:</div></div>
+    <div style="background:var(--line2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-family:monospace;font-size:11px;color:var(--ink2);margin:0 0 14px;line-height:1.7;overflow-x:auto;white-space:pre;direction:ltr">create table projects (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  color text default '#3b5bdb',
+  created_at timestamptz default now()
+);
+create table tasks (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  priority text default 'med',
+  status text default 'open',
+  project_id uuid references projects(id) on delete cascade,
+  due_date date,
+  reminder_time time,
+  assignee text,
+  files jsonb default '[]',
+  created_at timestamptz default now()
+);
+alter table projects enable row level security;
+alter table tasks enable row level security;
+create policy "all" on projects for all using (true);
+create policy "all" on tasks for all using (true);</div>
+    <div class="setup-step"><div class="step-num">3</div><div class="step-text">לך ל-<strong>Settings → API</strong> → העתק את <em>Project URL</em> ו-<em>anon public key</em></div></div>
+
+    <hr class="setup-divider">
+
+    <div class="setup-field">
+      <label>Project URL</label>
+      <input type="text" id="cfgUrl" placeholder="https://xxxxxxxxxxxx.supabase.co">
+    </div>
+    <div class="setup-field">
+      <label>Anon Public Key</label>
+      <input type="text" id="cfgKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+    </div>
+    <div class="setup-err" id="setupErr">חיבור נכשל — בדוק שה-URL וה-Key נכונים</div>
+    <button class="btn-connect" onclick="connectSupabase()">
+      <span id="connectLabel">התחבר ל-Supabase ←</span>
+    </button>
+    <div class="demo-link"><a onclick="startDemo()">המשך במצב דמו (ללא שמירה)</a></div>
+  </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+<aside class="sidebar" id="appSidebar" style="display:none">
+  <div class="logo">
+    <div class="logo-mark">TF</div>
+    <span class="logo-name">TaskFlow</span>
+    <div class="conn-dot" id="connDot" title="סטטוס חיבור"></div>
+  </div>
+
+  <nav class="nav">
+    <div class="nav-label">ראשי</div>
+    <div class="nav-item active" onclick="showView('dashboard',this)"><span class="nav-ic">⊡</span>לוח בקרה</div>
+    <div class="nav-item" onclick="showView('tasks',this)"><span class="nav-ic">✓</span>כל המשימות<span class="nav-badge" id="allBadge">0</span></div>
+    <div class="nav-item" onclick="showView('kanban',this)"><span class="nav-ic">▦</span>קנבן</div>
+    <div class="nav-item" onclick="showView('settings',this)"><span class="nav-ic">⚙</span>הגדרות</div>
+
+    <div class="nav-label" style="margin-top:4px">פרויקטים</div>
+    <div class="proj-list" id="projList"></div>
+    <div class="nav-item" style="color:var(--ink3)" onclick="openProjModal()"><span class="nav-ic">＋</span>פרויקט חדש</div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="avatar" id="userAv">?</div>
+      <div><div class="user-name" id="userName">אנונימי</div><div class="user-role" id="userRole">מנהל</div></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main" id="appMain" style="display:none">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div style="flex:1">
+      <div class="topbar-title" id="viewTitle">לוח בקרה</div>
+      <div class="topbar-sub" id="viewSub">ברוך הבא</div>
+    </div>
+    <div class="search"><span style="color:var(--ink3)">⌕</span><input type="text" placeholder="חיפוש…" id="searchQ" oninput="doSearch()"></div>
+    <button class="btn btn-primary" onclick="openTaskModal()">＋ משימה</button>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs" id="tabBar">
+    <div class="tab active" onclick="switchTab('list',this)">רשימה</div>
+    <div class="tab" onclick="switchTab('kanban',this)">קנבן</div>
+  </div>
+
+  <!-- DASHBOARD VIEW -->
+  <div class="view active pad" id="viewDashboard">
+    <div class="stats" id="statsRow">
+      <div class="stat"><div class="stat-label">סה״כ משימות</div><div class="stat-val" id="sTot">—</div><div class="stat-note">פעילות</div></div>
+      <div class="stat"><div class="stat-label">הושלמו</div><div class="stat-val" id="sDone" style="color:var(--green)">—</div><div class="stat-note" id="sDonePct"></div></div>
+      <div class="stat"><div class="stat-label">פתוחות</div><div class="stat-val" id="sOpen">—</div><div class="stat-note">בתהליך</div></div>
+      <div class="stat"><div class="stat-label">דחופות</div><div class="stat-val" id="sHigh" style="color:var(--red)">—</div><div class="stat-note">עדיפות גבוהה</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 280px;gap:16px">
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">משימות אחרונות</span><button class="btn btn-ghost btn-sm" onclick="showView('tasks',document.querySelector('.nav-item:nth-child(2))'))">הכל</button></div>
+        <div id="dashTasks"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">פרויקטים</span><button class="btn btn-ghost btn-sm" onclick="openProjModal()">＋</button></div>
+          <div id="dashProjs" style="padding:8px 10px;display:flex;flex-direction:column;gap:4px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TASKS VIEW -->
+  <div class="view pad" id="viewTasks">
+    <div class="panel" id="taskPanel">
+      <div class="panel-head">
+        <span class="panel-title" id="taskPanelTitle">כל המשימות</span>
+        <select id="filterStatus" onchange="renderTasks()" style="font-family:inherit;font-size:12px;background:var(--line2);border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--ink2)">
+          <option value="">כל הסטטוסים</option>
+          <option value="open">פתוח</option>
+          <option value="in_progress">בתהליך</option>
+          <option value="review">בביקורת</option>
+          <option value="done">הושלם</option>
+        </select>
+        <select id="filterPri" onchange="renderTasks()" style="font-family:inherit;font-size:12px;background:var(--line2);border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--ink2)">
+          <option value="">כל העדיפויות</option>
+          <option value="high">דחוף</option>
+          <option value="med">בינוני</option>
+          <option value="low">נמוך</option>
+        </select>
+      </div>
+      <div id="taskGroups"></div>
+      <div class="add-row" onclick="openTaskModal()">＋ &nbsp;הוסף משימה</div>
+    </div>
+  </div>
+
+  <!-- KANBAN VIEW -->
+  <div class="view" id="viewKanban" style="overflow:hidden">
+    <div class="kanban-wrap" id="kanbanBoard"></div>
+  </div>
+
+  <!-- SETTINGS VIEW -->
+  <div class="view pad" id="viewSettings">
+    <div class="settings-grid">
+      <div class="settings-section">
+        <div class="settings-head">פרטי משתמש</div>
+        <div class="settings-body">
+          <div class="field"><label>שם</label><input type="text" id="settingName" placeholder="השם שלך"></div>
+          <div class="field"><label>תפקיד</label><input type="text" id="settingRole" placeholder="מנהל פרויקטים"></div>
+          <div class="field"><label>אינישיאלים (לאווטר)</label><input type="text" id="settingInitials" placeholder="יכ" maxlength="2"></div>
+          <button class="btn btn-primary" onclick="saveUser()">שמור</button>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-head">חיבור Supabase</div>
+        <div class="settings-body">
+          <div class="field"><label>Project URL</label><input type="text" id="settingUrl" placeholder="https://...supabase.co"></div>
+          <div class="field"><label>Anon Key</label><input type="text" id="settingKey" placeholder="eyJ..."></div>
+          <button class="btn btn-primary" onclick="reconnect()">התחבר מחדש</button>
+          <button class="btn btn-ghost" style="margin-top:8px" onclick="location.reload()">אפס הגדרות</button>
+        </div>
+      </div>
+      <div class="settings-section full">
+        <div class="settings-head">ניהול פרויקטים</div>
+        <div class="settings-body" id="projSettings"></div>
+      </div>
+      <div class="settings-section full">
+        <div class="settings-head">סכנה</div>
+        <div class="settings-body">
+          <div class="settings-row">
+            <div><div class="settings-row-label">מחק את כל המשימות</div><div class="settings-row-sub">פעולה בלתי הפיכה</div></div>
+            <button class="btn btn-danger btn-sm" onclick="deleteAllTasks()">מחק הכל</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ TASK MODAL ═══ -->
+<div class="overlay" id="taskOverlay" onclick="closeIfBg(event,'taskOverlay')">
+<div class="modal modal-wide">
+  <div class="modal-title" id="taskModalTitle">משימה חדשה</div>
+  <input type="hidden" id="editTaskId">
+  <div class="field"><label>כותרת *</label><input type="text" id="tTitle" placeholder="מה צריך לעשות?"></div>
+  <div class="field"><label>תיאור</label><textarea id="tDesc" placeholder="פרטים נוספים…"></textarea></div>
+  <div class="field-row">
+    <div class="field" style="margin:0"><label>עדיפות</label>
+      <select id="tPri">
+        <option value="high">🔴 דחוף</option>
+        <option value="med" selected>🟡 בינוני</option>
+        <option value="low">🟢 נמוך</option>
+      </select>
+    </div>
+    <div class="field" style="margin:0"><label>סטטוס</label>
+      <select id="tStatus">
+        <option value="open">פתוח</option>
+        <option value="in_progress">בתהליך</option>
+        <option value="review">בביקורת</option>
+        <option value="done">הושלם</option>
+      </select>
+    </div>
+  </div>
+  <div class="field-row" style="margin-top:14px">
+    <div class="field" style="margin:0"><label>פרויקט</label>
+      <select id="tProj"><option value="">ללא פרויקט</option></select>
+    </div>
+    <div class="field" style="margin:0"><label>תאריך יעד</label><input type="date" id="tDue" onchange="updateCalBtn()"></div>
+  </div>
+  <div class="field-row" style="margin-top:14px">
+    <div class="field" style="margin:0">
+      <label>שעת תזכורת</label>
+      <input type="time" id="tTime" onchange="updateCalBtn()" placeholder="--:--">
+    </div>
+    <div class="field" style="margin:0;display:flex;flex-direction:column;justify-content:flex-end">
+      <a id="calBtn" href="#" target="_blank" rel="noopener"
+        style="display:none;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:9px 13px;font-size:13px;font-weight:600;color:#1a73e8;text-decoration:none;transition:all .15s"
+        onmouseover="this.style.background='#f0f4ff'" onmouseout="this.style.background='#fff'">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#1a73e8" stroke-width="2"/><line x1="3" y1="9" x2="21" y2="9" stroke="#1a73e8" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="6" stroke="#1a73e8" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="#1a73e8" stroke-width="2"/></svg>
+        הוסף ל-Google Calendar
+      </a>
+      <span id="calHint" style="font-size:11.5px;color:var(--ink3);align-self:flex-end">בחר תאריך ושעה כדי להוסיף ליומן</span>
+    </div>
+  </div>
+  <div class="field" style="margin-top:14px"><label>אחראי</label><input type="text" id="tAssignee" placeholder="שם האחראי"></div>
+  <div class="field" style="margin-top:14px">
+    <label>קבצים מצורפים</label>
+    <div class="file-drop" id="fileDrop" onclick="document.getElementById('fileInput').click()" ondragover="fileDragOver(event)" ondragleave="fileDragLeave(event)" ondrop="fileDrop(event)">
+      <input type="file" id="fileInput" multiple onchange="handleFiles(this.files)">
+      <div>📎 גרור קבצים לכאן או לחץ לבחירה</div>
+      <div style="font-size:11px;margin-top:4px;color:var(--ink3)">כל סוג קובץ מותר</div>
+    </div>
+    <div class="file-list" id="fileList"></div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-primary" id="taskSaveBtn" onclick="saveTask()">שמור משימה</button>
+    <button class="btn btn-ghost" onclick="closeModal('taskOverlay')">ביטול</button>
+    <button class="btn btn-danger btn-sm" id="taskDeleteBtn" style="display:none;margin-right:auto" onclick="deleteTask()">מחק</button>
+  </div>
+</div>
+</div>
+
+<!-- ═══ PROJECT MODAL ═══ -->
+<div class="overlay" id="projOverlay" onclick="closeIfBg(event,'projOverlay')">
+<div class="modal">
+  <div class="modal-title" id="projModalTitle">פרויקט חדש</div>
+  <input type="hidden" id="editProjId">
+  <div class="field"><label>שם הפרויקט *</label><input type="text" id="pName" placeholder="שם הפרויקט"></div>
+  <div class="field">
+    <label>צבע</label>
+    <div class="color-picker" id="colorPicker"></div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-primary" onclick="saveProject()">שמור פרויקט</button>
+    <button class="btn btn-ghost" onclick="closeModal('projOverlay')">ביטול</button>
+    <button class="btn btn-danger btn-sm" id="projDeleteBtn" style="display:none;margin-right:auto" onclick="deleteProject()">מחק פרויקט</button>
+  </div>
+</div>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+let sb = null;
+let projects = [];
+let tasks = [];
+let currentProjFilter = null;
+let currentView = 'dashboard';
+let currentTab = 'list';
+let pendingFiles = []; // {name, size, dataUrl, type}
+let demoMode = false;
+let user = {name:'משתמש', role:'מנהל', initials:'מ'};
+
+const COLORS = ['#3b5bdb','#2f9e44','#e67700','#c92a2a','#7c3aed','#0c8599','#e64980','#495057'];
+const STATUS_LABELS = {open:'פתוח',in_progress:'בתהליך',review:'בביקורת',done:'הושלם'};
+const STATUS_COLORS = {open:'#495057',in_progress:'#3b5bdb',review:'#e67700',done:'#2f9e44'};
+const PRI_LABEL = {high:'דחוף',med:'בינוני',low:'נמוך'};
+const PRI_CLASS = {high:'b-red',med:'b-amber',low:'b-green'};
+
+// ═══════════════════════════════════════════════════
+// SETUP & CONNECTION
+// ═══════════════════════════════════════════════════
+async function connectSupabase() {
+  const url = document.getElementById('cfgUrl').value.trim();
+  const key = document.getElementById('cfgKey').value.trim();
+  if (!url || !key) { showErr('נא למלא URL ו-Key'); return; }
+  document.getElementById('connectLabel').innerHTML = '<span class="spinner"></span>';
+  try {
+    sb = supabase.createClient(url, key);
+    const {error} = await sb.from('projects').select('id').limit(1);
+    if (error) throw error;
+    localStorage.setItem('tf_url', url);
+    localStorage.setItem('tf_key', key);
+    loadUser();
+    startApp();
+  } catch(e) {
+    sb = null;
+    document.getElementById('connectLabel').textContent = 'התחבר ל-Supabase ←';
+    showErr('חיבור נכשל — ' + (e.message || 'בדוק את הפרטים'));
+  }
+}
+
+function showErr(msg) {
+  const el = document.getElementById('setupErr');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function startDemo() {
+  demoMode = true;
+  projects = [
+    {id:'p1',name:'פיתוח מוצר',color:'#3b5bdb'},
+    {id:'p2',name:'שיווק',color:'#2f9e44'},
+    {id:'p3',name:'עיצוב',color:'#e67700'},
+  ];
+  tasks = [
+    {id:'t1',title:'תיקון באג בדף תשלום',priority:'high',status:'in_progress',project_id:'p1',due_date:'2025-03-12',assignee:'יוסי כהן',files:[],description:'',created_at:new Date().toISOString()},
+    {id:'t2',title:'מצגת למשקיעים',priority:'high',status:'review',project_id:'p2',due_date:'2025-03-13',assignee:'מיכל לוי',files:[],description:'',created_at:new Date().toISOString()},
+    {id:'t3',title:'עדכון עיצוב דף הבית',priority:'med',status:'open',project_id:'p3',due_date:'2025-03-20',assignee:'ענת שמיר',files:[],description:'',created_at:new Date().toISOString()},
+    {id:'t4',title:'אינטגרציה Stripe',priority:'med',status:'in_progress',project_id:'p1',due_date:'2025-03-25',assignee:'דוד מנשה',files:[],description:'',created_at:new Date().toISOString()},
+    {id:'t5',title:'CI/CD Pipeline',priority:'low',status:'done',project_id:'p1',due_date:null,assignee:'דוד מנשה',files:[],description:'',created_at:new Date().toISOString()},
+  ];
+  loadUser();
+  startApp();
+  toast('מצב דמו — הנתונים לא נשמרים','');
+}
+
+function reconnect() {
+  const url = document.getElementById('settingUrl').value.trim();
+  const key = document.getElementById('settingKey').value.trim();
+  if (!url||!key) return;
+  localStorage.setItem('tf_url',url); localStorage.setItem('tf_key',key);
+  location.reload();
+}
+
+async function tryAutoConnect() {
+  const url = localStorage.getItem('tf_url');
+  const key = localStorage.getItem('tf_key');
+  if (!url || !key) return false;
+  try {
+    sb = supabase.createClient(url, key);
+    const {error} = await sb.from('projects').select('id').limit(1);
+    if (error) { sb=null; return false; }
+    document.getElementById('settingUrl').value = url;
+    document.getElementById('settingKey').value = key;
+    return true;
+  } catch { sb=null; return false; }
+}
+
+function loadUser() {
+  const stored = localStorage.getItem('tf_user');
+  if (stored) user = JSON.parse(stored);
+  document.getElementById('userName').textContent = user.name;
+  document.getElementById('userRole').textContent = user.role;
+  document.getElementById('userAv').textContent = user.initials;
+  document.getElementById('settingName').value = user.name;
+  document.getElementById('settingRole').value = user.role;
+  document.getElementById('settingInitials').value = user.initials;
+}
+
+function saveUser() {
+  user.name = document.getElementById('settingName').value.trim() || user.name;
+  user.role = document.getElementById('settingRole').value.trim() || user.role;
+  user.initials = document.getElementById('settingInitials').value.trim().slice(0,2) || user.initials;
+  localStorage.setItem('tf_user', JSON.stringify(user));
+  loadUser();
+  toast('הגדרות משתמש נשמרו','success');
+}
+
+// ═══════════════════════════════════════════════════
+// START APP
+// ═══════════════════════════════════════════════════
+function startApp() {
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('appSidebar').style.display = 'flex';
+  document.getElementById('appMain').style.display = 'flex';
+  document.getElementById('connDot').className = 'conn-dot ' + (sb ? 'online' : 'offline');
+  document.getElementById('connDot').title = sb ? 'מחובר ל-Supabase' : 'מצב דמו';
+  loadAll();
+}
+
+async function loadAll() {
+  if (sb && !demoMode) {
+    const [pr, tk] = await Promise.all([
+      sb.from('projects').select('*').order('created_at'),
+      sb.from('tasks').select('*').order('created_at', {ascending:false})
+    ]);
+    projects = pr.data || [];
+    tasks = tk.data || [];
+  }
+  renderSidebar();
+  renderDashboard();
+  renderTasks();
+  renderKanban();
+  renderProjSettings();
+  document.getElementById('allBadge').textContent = tasks.filter(t=>t.status!=='done').length;
+}
+
+// ═══════════════════════════════════════════════════
+// SIDEBAR
+// ═══════════════════════════════════════════════════
+function renderSidebar() {
+  const list = document.getElementById('projList');
+  list.innerHTML = projects.map(p => `
+    <div class="proj-row ${currentProjFilter===p.id?'active':''}" onclick="filterByProj('${p.id}',this)">
+      <div class="proj-dot" style="background:${p.color}"></div>
+      <span style="flex:1">${esc(p.name)}</span>
+      <span style="font-size:11px;color:var(--ink3)">${tasks.filter(t=>t.project_id===p.id&&t.status!=='done').length}</span>
+      <div class="proj-actions">
+        <button class="proj-act-btn" onclick="event.stopPropagation();openProjModal('${p.id}')" title="עריכה">✎</button>
+      </div>
+    </div>`).join('');
+}
+
+function filterByProj(id, el) {
+  currentProjFilter = currentProjFilter===id ? null : id;
+  document.querySelectorAll('.proj-row').forEach(r=>r.classList.remove('active'));
+  if (currentProjFilter) el.classList.add('active');
+  renderTasks();
+  renderKanban();
+  const proj = projects.find(p=>p.id===id);
+  if (proj) { document.getElementById('taskPanelTitle').textContent = proj.name; }
+  else { document.getElementById('taskPanelTitle').textContent = 'כל המשימות'; }
+}
+
+// ═══════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════
+function renderDashboard() {
+  const total = tasks.length;
+  const done = tasks.filter(t=>t.status==='done').length;
+  const open = tasks.filter(t=>t.status!=='done').length;
+  const high = tasks.filter(t=>t.priority==='high'&&t.status!=='done').length;
+  document.getElementById('sTot').textContent = total;
+  document.getElementById('sDone').textContent = done;
+  document.getElementById('sDonePct').textContent = total ? Math.round(done/total*100)+'% הושלמו' : '0%';
+  document.getElementById('sOpen').textContent = open;
+  document.getElementById('sHigh').textContent = high;
+
+  const recent = [...tasks].slice(0,5);
+  document.getElementById('dashTasks').innerHTML = recent.length ? recent.map(t=>taskRowHTML(t)).join('') : emptyHTML('אין משימות עדיין');
+
+  document.getElementById('dashProjs').innerHTML = projects.map(p=>{
+    const cnt = tasks.filter(t=>t.project_id===p.id&&t.status!=='done').length;
+    const done = tasks.filter(t=>t.project_id===p.id&&t.status==='done').length;
+    const tot = tasks.filter(t=>t.project_id===p.id).length;
+    const pct = tot ? Math.round(done/tot*100) : 0;
+    return `<div style="padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .12s" onmouseover="this.style.background='var(--line2)'" onmouseout="this.style.background=''" onclick="filterByProj('${p.id}',document.querySelector('.proj-row'))">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+        <div style="width:7px;height:7px;border-radius:50%;background:${p.color};flex-shrink:0"></div>
+        <span style="font-size:13px;font-weight:600;flex:1">${esc(p.name)}</span>
+        <span style="font-size:11px;color:var(--ink3)">${cnt} פתוחות</span>
+      </div>
+      <div style="height:3px;background:var(--line);border-radius:10px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${p.color};border-radius:10px;transition:width .5s"></div>
+      </div>
+    </div>`;
+  }).join('') || '<div style="padding:12px;color:var(--ink3);font-size:13px">אין פרויקטים עדיין</div>';
+}
+
+// ═══════════════════════════════════════════════════
+// TASKS
+// ═══════════════════════════════════════════════════
+function getFilteredTasks() {
+  let list = [...tasks];
+  if (currentProjFilter) list = list.filter(t=>t.project_id===currentProjFilter);
+  const status = document.getElementById('filterStatus')?.value;
+  const pri = document.getElementById('filterPri')?.value;
+  const q = document.getElementById('searchQ')?.value.toLowerCase();
+  if (status) list = list.filter(t=>t.status===status);
+  if (pri) list = list.filter(t=>t.priority===pri);
+  if (q) list = list.filter(t=>t.title.toLowerCase().includes(q) || (t.assignee||'').toLowerCase().includes(q));
+  return list;
+}
+
+function renderTasks() {
+  const list = getFilteredTasks();
+  const groups = {high:[],med:[],low:[]};
+  list.forEach(t => groups[t.priority]?.push(t));
+  const container = document.getElementById('taskGroups');
+  container.innerHTML = ['high','med','low'].map(pri => {
+    const grpTasks = groups[pri];
+    const pip = {high:'#c92a2a',med:'#e67700',low:'#2f9e44'}[pri];
+    const label = PRI_LABEL[pri];
+    return `<div class="task-group">
+      <div class="grp-head" onclick="toggleGrp('${pri}')">
+        <div class="grp-pip" style="background:${pip}"></div>
+        ${label} <span class="grp-count">&nbsp;${grpTasks.length}</span>
+        <span class="grp-arrow open" id="garr-${pri}">›</span>
+      </div>
+      <div id="grp-${pri}">${grpTasks.length ? grpTasks.map(t=>taskRowHTML(t)).join('') : `<div style="padding:12px 18px;color:var(--ink3);font-size:12.5px">אין משימות</div>`}</div>
+    </div>`;
+  }).join('');
+}
+
+function taskRowHTML(t) {
+  const proj = projects.find(p=>p.id===t.project_id);
+  const today = new Date().toISOString().slice(0,10);
+  const isLate = t.due_date && t.due_date < today && t.status!=='done';
+  const isDone = t.status==='done';
+  const initials = (t.assignee||'').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?';
+  const filesCount = (t.files||[]).length;
+  return `<div class="task-row ${isDone?'done-row':''}" onclick="openTaskModal('${t.id}')">
+    <div class="check ${isDone?'checked':''}" onclick="quickToggle(event,'${t.id}')"></div>
+    <span class="task-name">${esc(t.title)}</span>
+    <div class="task-meta">
+      ${filesCount ? `<span style="font-size:11px;color:var(--ink3)">📎${filesCount}</span>` : ''}
+      ${proj ? `<span class="badge" style="background:${proj.color}22;color:${proj.color}">${esc(proj.name)}</span>` : ''}
+      <span class="badge ${PRI_CLASS[t.priority]}">${PRI_LABEL[t.priority]}</span>
+      ${t.assignee ? `<div class="av" style="background:${strColor(t.assignee)}" title="${esc(t.assignee)}">${initials}</div>` : ''}
+      ${t.due_date ? `<span class="due-date ${isLate?'late':''}">${isLate?'⚠ ':''} ${formatDate(t.due_date)}${t.reminder_time ? ' · 🕐 '+formatTime(t.reminder_time) : ''}</span>` : ''}
+      <div class="task-actions">
+        <button class="icon-btn edit" onclick="event.stopPropagation();openTaskModal('${t.id}')" title="עריכה">✎</button>
+        <button class="icon-btn" onclick="event.stopPropagation();confirmDeleteTask('${t.id}')" title="מחק">✕</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleGrp(pri) {
+  const el = document.getElementById('grp-'+pri);
+  const arr = document.getElementById('garr-'+pri);
+  const hidden = el.style.display==='none';
+  el.style.display = hidden ? '' : 'none';
+  arr.classList.toggle('open', hidden);
+}
+
+async function quickToggle(e, id) {
+  e.stopPropagation();
+  const t = tasks.find(x=>x.id===id);
+  if (!t) return;
+  t.status = t.status==='done' ? 'open' : 'done';
+  if (sb && !demoMode) await sb.from('tasks').update({status:t.status}).eq('id',id);
+  refreshAll();
+}
+
+// ═══════════════════════════════════════════════════
+// KANBAN
+// ═══════════════════════════════════════════════════
+function renderKanban() {
+  const statuses = ['open','in_progress','review','done'];
+  const list = getFilteredTasks();
+  document.getElementById('kanbanBoard').innerHTML = statuses.map(s=>{
+    const cols = list.filter(t=>t.status===s);
+    return `<div class="k-col">
+      <div class="k-head">
+        <div class="k-pip" style="background:${STATUS_COLORS[s]}"></div>
+        ${STATUS_LABELS[s]}
+        <span class="k-cnt">${cols.length}</span>
+      </div>
+      <div class="k-cards" data-status="${s}" ondragover="kdOver(event)" ondragleave="kdLeave(event)" ondrop="kdDrop(event,'${s}')">
+        ${cols.map(t=>{
+          const proj = projects.find(p=>p.id===t.project_id);
+          return `<div class="k-card" draggable="true" ondragstart="kdStart(event,'${t.id}')" ondragend="kdEnd(event)" onclick="openTaskModal('${t.id}')">
+            <div class="k-card-title">${esc(t.title)}</div>
+            <div class="k-card-foot">
+              <span class="badge ${PRI_CLASS[t.priority]}">${PRI_LABEL[t.priority]}</span>
+              ${proj?`<span class="badge" style="background:${proj.color}22;color:${proj.color}">${esc(proj.name)}</span>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="k-add" onclick="openTaskModal(null,'${s}')">＋ הוסף</div>
+    </div>`;
+  }).join('');
+}
+
+let dragId = null;
+function kdStart(e,id){ dragId=id; setTimeout(()=>e.target.classList.add('dragging'),0); }
+function kdEnd(e){ e.target.classList.remove('dragging'); dragId=null; }
+function kdOver(e){ e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+function kdLeave(e){ e.currentTarget.classList.remove('drag-over'); }
+async function kdDrop(e,status){
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  if (!dragId) return;
+  const t = tasks.find(x=>x.id===dragId);
+  if (!t || t.status===status) return;
+  t.status = status;
+  if (sb && !demoMode) await sb.from('tasks').update({status}).eq('id',dragId);
+  toast(`הועבר ל-${STATUS_LABELS[status]}`,'success');
+  refreshAll();
+}
+
+// ═══════════════════════════════════════════════════
+// TASK MODAL
+// ═══════════════════════════════════════════════════
+function openTaskModal(id=null, defaultStatus='open') {
+  pendingFiles = [];
+  document.getElementById('fileList').innerHTML = '';
+  document.getElementById('editTaskId').value = id || '';
+  document.getElementById('taskDeleteBtn').style.display = id ? 'flex' : 'none';
+
+  // Populate project select
+  const projSel = document.getElementById('tProj');
+  projSel.innerHTML = '<option value="">ללא פרויקט</option>' +
+    projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+
+  if (id) {
+    const t = tasks.find(x=>x.id===id);
+    if (!t) return;
+    document.getElementById('taskModalTitle').textContent = 'עריכת משימה';
+    document.getElementById('tTitle').value = t.title;
+    document.getElementById('tDesc').value = t.description||'';
+    document.getElementById('tPri').value = t.priority;
+    document.getElementById('tStatus').value = t.status;
+    document.getElementById('tProj').value = t.project_id||'';
+    document.getElementById('tDue').value = t.due_date||'';
+    document.getElementById('tTime').value = t.reminder_time||'';
+    document.getElementById('tAssignee').value = t.assignee||'';
+    pendingFiles = [...(t.files||[])];
+    renderFileList();
+    updateCalBtn();
+  } else {
+    document.getElementById('taskModalTitle').textContent = 'משימה חדשה';
+    document.getElementById('tTitle').value='';
+    document.getElementById('tDesc').value='';
+    document.getElementById('tPri').value='med';
+    document.getElementById('tStatus').value=defaultStatus;
+    document.getElementById('tProj').value=currentProjFilter||'';
+    document.getElementById('tDue').value='';
+    document.getElementById('tTime').value='';
+    document.getElementById('tAssignee').value='';
+    updateCalBtn();
+  }
+  document.getElementById('taskOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('tTitle').focus(),50);
+}
+
+async function saveTask() {
+  const title = document.getElementById('tTitle').value.trim();
+  if (!title) { document.getElementById('tTitle').style.borderColor='var(--red)'; return; }
+  document.getElementById('tTitle').style.borderColor='';
+  const id = document.getElementById('editTaskId').value;
+  const data = {
+    title,
+    description: document.getElementById('tDesc').value.trim(),
+    priority: document.getElementById('tPri').value,
+    status: document.getElementById('tStatus').value,
+    project_id: document.getElementById('tProj').value || null,
+    due_date: document.getElementById('tDue').value || null,
+    reminder_time: document.getElementById('tTime').value || null,
+    assignee: document.getElementById('tAssignee').value.trim(),
+    files: pendingFiles,
+  };
+  document.getElementById('taskSaveBtn').innerHTML = '<span class="spinner"></span>';
+  if (id) {
+    if (sb && !demoMode) await sb.from('tasks').update(data).eq('id',id);
+    const idx = tasks.findIndex(t=>t.id===id);
+    if (idx>=0) tasks[idx] = {...tasks[idx],...data};
+    toast('משימה עודכנה','success');
+  } else {
+    if (sb && !demoMode) {
+      const {data:row} = await sb.from('tasks').insert(data).select().single();
+      if (row) tasks.unshift(row);
+    } else {
+      tasks.unshift({id:'local-'+Date.now(),...data,created_at:new Date().toISOString()});
+    }
+    toast('משימה נוצרה','success');
+  }
+  document.getElementById('taskSaveBtn').textContent='שמור משימה';
+  closeModal('taskOverlay');
+  refreshAll();
+}
+
+function confirmDeleteTask(id) {
+  document.getElementById('editTaskId').value = id;
+  deleteTask();
+}
+
+async function deleteTask() {
+  const id = document.getElementById('editTaskId').value;
+  if (!id || !confirm('למחוק את המשימה?')) return;
+  if (sb && !demoMode) await sb.from('tasks').delete().eq('id',id);
+  tasks = tasks.filter(t=>t.id!==id);
+  closeModal('taskOverlay');
+  toast('משימה נמחקה','');
+  refreshAll();
+}
+
+async function deleteAllTasks() {
+  if (!confirm('למחוק את כל המשימות? פעולה בלתי הפיכה!')) return;
+  if (sb && !demoMode) await sb.from('tasks').delete().neq('id','00000000-0000-0000-0000-000000000000');
+  tasks = [];
+  toast('כל המשימות נמחקו','');
+  refreshAll();
+}
+
+// ═══════════════════════════════════════════════════
+// PROJECT MODAL
+// ═══════════════════════════════════════════════════
+let selectedColor = COLORS[0];
+
+function openProjModal(id=null) {
+  document.getElementById('editProjId').value = id||'';
+  document.getElementById('projDeleteBtn').style.display = id ? 'flex' : 'none';
+  selectedColor = COLORS[0];
+  document.getElementById('colorPicker').innerHTML = COLORS.map(c=>
+    `<div class="color-swatch ${c===selectedColor?'sel':''}" style="background:${c}" onclick="selectColor('${c}',this)"></div>`
+  ).join('');
+  if (id) {
+    const p = projects.find(x=>x.id===id);
+    document.getElementById('projModalTitle').textContent = 'עריכת פרויקט';
+    document.getElementById('pName').value = p?.name||'';
+    selectedColor = p?.color||COLORS[0];
+    document.querySelectorAll('.color-swatch').forEach(el=>{ el.classList.toggle('sel', el.style.background===selectedColor); });
+  } else {
+    document.getElementById('projModalTitle').textContent = 'פרויקט חדש';
+    document.getElementById('pName').value = '';
+  }
+  document.getElementById('projOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('pName').focus(),50);
+}
+
+function selectColor(c, el) {
+  selectedColor = c;
+  document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+async function saveProject() {
+  const name = document.getElementById('pName').value.trim();
+  if (!name) return;
+  const id = document.getElementById('editProjId').value;
+  const data = {name, color: selectedColor};
+  if (id) {
+    if (sb && !demoMode) await sb.from('projects').update(data).eq('id',id);
+    const idx = projects.findIndex(p=>p.id===id);
+    if (idx>=0) projects[idx] = {...projects[idx],...data};
+    toast('פרויקט עודכן','success');
+  } else {
+    if (sb && !demoMode) {
+      const {data:row} = await sb.from('projects').insert(data).select().single();
+      if (row) projects.push(row);
+    } else {
+      projects.push({id:'lp-'+Date.now(),...data});
+    }
+    toast('פרויקט נוצר','success');
+  }
+  closeModal('projOverlay');
+  refreshAll();
+}
+
+async function deleteProject() {
+  const id = document.getElementById('editProjId').value;
+  if (!id || !confirm('למחוק את הפרויקט וכל המשימות שלו?')) return;
+  if (sb && !demoMode) await sb.from('projects').delete().eq('id',id);
+  projects = projects.filter(p=>p.id!==id);
+  tasks = tasks.filter(t=>t.project_id!==id);
+  if (currentProjFilter===id) currentProjFilter=null;
+  closeModal('projOverlay');
+  toast('פרויקט נמחק','');
+  refreshAll();
+}
+
+function renderProjSettings() {
+  document.getElementById('projSettings').innerHTML = projects.map(p=>`
+    <div class="settings-row">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:10px;height:10px;border-radius:50%;background:${p.color}"></div>
+        <div><div class="settings-row-label">${esc(p.name)}</div><div class="settings-row-sub">${tasks.filter(t=>t.project_id===p.id).length} משימות</div></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="openProjModal('${p.id}')">✎ ערוך</button>
+    </div>`).join('') || '<div style="color:var(--ink3);font-size:13px">אין פרויקטים</div>';
+}
+
+// ═══════════════════════════════════════════════════
+// FILE HANDLING
+// ═══════════════════════════════════════════════════
+function handleFiles(files) {
+  Array.from(files).forEach(f=>{
+    const reader = new FileReader();
+    reader.onload = e => {
+      pendingFiles.push({name:f.name, size:f.size, type:f.type, dataUrl:e.target.result});
+      renderFileList();
+    };
+    reader.readAsDataURL(f);
+  });
+}
+function fileDragOver(e){ e.preventDefault(); document.getElementById('fileDrop').classList.add('drag-on'); }
+function fileDragLeave(e){ document.getElementById('fileDrop').classList.remove('drag-on'); }
+function fileDrop(e){ e.preventDefault(); document.getElementById('fileDrop').classList.remove('drag-on'); handleFiles(e.dataTransfer.files); }
+
+function renderFileList() {
+  document.getElementById('fileList').innerHTML = pendingFiles.map((f,i)=>`
+    <div class="file-item">
+      <span class="file-icon">${fileIcon(f.type||f.name)}</span>
+      <span class="file-name">${esc(f.name)}</span>
+      <span class="file-size">${formatBytes(f.size)}</span>
+      ${f.dataUrl ? `<a href="${f.dataUrl}" download="${f.name}" onclick="event.stopPropagation()" style="color:var(--blue);font-size:12px;text-decoration:none" title="הורד">⬇</a>` : ''}
+      <button class="file-remove" onclick="removeFile(${i})">✕</button>
+    </div>`).join('');
+}
+function removeFile(i){ pendingFiles.splice(i,1); renderFileList(); }
+
+function fileIcon(t){
+  if (/image/.test(t)) return '🖼';
+  if (/pdf/.test(t)) return '📄';
+  if (/word|doc/.test(t)) return '📝';
+  if (/sheet|excel|xlsx/.test(t)) return '📊';
+  if (/zip|rar/.test(t)) return '🗜';
+  return '📎';
+}
+function formatBytes(b){ if(!b) return ''; if(b<1024) return b+'B'; if(b<1048576) return (b/1024).toFixed(1)+'KB'; return (b/1048576).toFixed(1)+'MB'; }
+
+// ═══════════════════════════════════════════════════
+// VIEW SWITCHING
+// ═══════════════════════════════════════════════════
+function showView(v, el) {
+  currentView = v;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const titles = {dashboard:'לוח בקרה',tasks:'המשימות שלי',kanban:'קנבן',settings:'הגדרות'};
+  document.getElementById('viewTitle').textContent = titles[v]||v;
+  document.getElementById('viewSub').textContent = v==='dashboard' ? `${tasks.filter(t=>t.status!=='done').length} משימות פתוחות` : '';
+  document.getElementById('tabBar').style.display = (v==='tasks'||v==='kanban') ? 'flex' : 'none';
+  ['dashboard','tasks','kanban','settings'].forEach(id=>{
+    const el = document.getElementById('view'+cap(id));
+    if (el) { el.classList.toggle('active', id===v); }
+  });
+  if (v==='tasks') { currentTab='list'; document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===0)); }
+  if (v==='kanban') { currentTab='kanban'; document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===1)); }
+  if (v==='settings') { document.getElementById('settingUrl').value=localStorage.getItem('tf_url')||''; document.getElementById('settingKey').value=localStorage.getItem('tf_key')||''; }
+}
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  if (tab==='list') showView('tasks');
+  else showView('kanban');
+}
+
+// ═══════════════════════════════════════════════════
+// GOOGLE CALENDAR LINK
+// ═══════════════════════════════════════════════════
+function updateCalBtn() {
+  const date = document.getElementById('tDue').value;
+  const time = document.getElementById('tTime').value;
+  const btn = document.getElementById('calBtn');
+  const hint = document.getElementById('calHint');
+  if (!date || !time) {
+    btn.style.display = 'none';
+    hint.style.display = 'block';
+    return;
+  }
+  const title = document.getElementById('tTitle').value.trim() || 'משימה';
+  const desc = document.getElementById('tDesc').value.trim();
+  // Build start/end datetime (1 hour duration)
+  const startDt = date.replace(/-/g,'') + 'T' + time.replace(':','') + '00';
+  const endDate = new Date(date + 'T' + time);
+  endDate.setHours(endDate.getHours() + 1);
+  const endDt = endDate.toISOString().slice(0,10).replace(/-/g,'') + 'T' +
+    endDate.toTimeString().slice(0,5).replace(':','') + '00';
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title,
+    dates: startDt + '/' + endDt,
+    details: desc || 'נוצר דרך TaskFlow',
+    sf: 'true',
+  });
+  btn.href = 'https://calendar.google.com/calendar/render?' + params.toString();
+  btn.style.display = 'flex';
+  hint.style.display = 'none';
+}
+
+function formatTime(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':');
+  return h + ':' + m;
+}
+function doSearch() { renderTasks(); renderKanban(); }
+
+// ═══════════════════════════════════════════════════
+// REFRESH
+// ═══════════════════════════════════════════════════
+function refreshAll() {
+  renderSidebar();
+  renderDashboard();
+  renderTasks();
+  renderKanban();
+  renderProjSettings();
+  document.getElementById('allBadge').textContent = tasks.filter(t=>t.status!=='done').length;
+}
+
+// ═══════════════════════════════════════════════════
+// MODAL HELPERS
+// ═══════════════════════════════════════════════════
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function closeIfBg(e,id){ if(e.target===document.getElementById(id)) closeModal(id); }
+
+// ═══════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════
+function toast(msg, type='') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  document.getElementById('toastWrap').appendChild(el);
+  setTimeout(()=>el.remove(), 3000);
+}
+
+// ═══════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════
+function esc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+function formatDate(d){ if(!d) return ''; const dt=new Date(d+'T00:00'); return dt.toLocaleDateString('he-IL',{day:'numeric',month:'short'}); }
+function emptyHTML(msg){ return `<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">${msg}</div></div>`; }
+function strColor(s){ let h=0; for(let c of s) h=(h*31+c.charCodeAt(0))&0xffffffff; const hue=Math.abs(h)%360; return `hsl(${hue},50%,45%)`; }
+
+// ═══════════════════════════════════════════════════
+// KEYBOARD
+// ═══════════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){ document.querySelectorAll('.overlay.open').forEach(o=>o.classList.remove('open')); }
+  if(e.key==='n'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) openTaskModal();
+});
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+(async()=>{
+  const ok = await tryAutoConnect();
+  if(ok){ loadUser(); startApp(); }
+})();
+</script>
+</body>
+</html>
